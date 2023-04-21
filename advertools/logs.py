@@ -474,6 +474,7 @@ def logs_to_df(log_file, output_file, errors_file, log_format, fields=None):
         with open(log_file) as source_file:
             linenumber = 0
             parsed_lines = []
+            parse_error_count = 0
             for line in source_file:
                 linenumber += 1
                 try:
@@ -481,6 +482,7 @@ def logs_to_df(log_file, output_file, errors_file, log_format, fields=None):
                     parsed_lines.append(log_line)
                 except Exception as e:
                     with open(errors_file, 'at') as err:
+                        parse_error_count += 1
                         err_line = line[:-1] if line.endswith('\n') else line
                         print('@@'.join([str(linenumber), err_line, str(e)]),
                               file=err)
@@ -491,7 +493,10 @@ def logs_to_df(log_file, output_file, errors_file, log_format, fields=None):
                     df.to_parquet(tempdir_name / f'file_{linenumber}.parquet')
                     parsed_lines.clear()
             else:
-                print(f'Parsed {linenumber:>15,} lines.')
+                if parse_error_count > 0:
+                    print(f'Parsed {linenumber:>15,} lines with {parse_error_count} errors.')
+                else:
+                    print(f'Parsed {linenumber:>15,} lines.')
                 df = pd.DataFrame(parsed_lines, columns=columns)
                 df.to_parquet(tempdir_name / f'file_{linenumber}.parquet')
             final_df = pd.read_parquet(tempdir_name)
